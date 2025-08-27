@@ -484,6 +484,20 @@ where should the rater limiter be implemented, on the server-side or in a gatewa
   - Pros: memory efficient & handle spikes
   - Cons:  It only works for not-so-strict look back window. It is an approximation of the actual rate because it assumes requests in the previous window are evenly distributed.
 
+- Hard vs soft rate limiting
+  - Hard: The number of requests cannot exceed the threshold.
+  - Soft: Requests can exceed the threshold for a short period.
+
+- Rate limiting at different levels.
+  - application level 
+  - rate limiting by IP addresses using Iptables
+
+- Avoid being rate limited
+  - Use client cache to avoid making frequent API calls.
+  - Understand the limit and do not send too many requests in a short time frame.
+  - Include code to catch exceptions or errors so your client can gracefully recover from exceptions.
+  - Add sufficient back off time to retry logic.
+
 **High-level architecture**
 - Using the database is not a good idea due to slowness of disk access.
 -  In-memory cache is chosen because it is fast and supports time-based expiration strategy
@@ -514,5 +528,50 @@ descriptors:
 
 **Exceeding the rate limit**
 - APIs return a HTTP response code 429 (too many requests)
-- we may enqueue the rate-limited requests to be
-processed later
+- we may enqueue the rate-limited requests to be processed later
+
+**Rate limiter headers**
+- How does a client know whether it is being throttled? 
+- how does a client know the number of allowed remaining requests before being throttled
+
+Use header
+- X-Ratelimit-Remaining: The remaining number of allowed requests within the window.
+- X-Ratelimit-Limit: It indicates how many calls the client can make per time window.
+- X-Ratelimit-Retry-After: The number of seconds to wait until you can make a request again without being throttled.
+
+
+**Detailed design**
+
+![Fig 4-13](pic/Screenshot%202025-08-27%20at%2012.25.11 PM.png)
+
+- Rules in disk
+- Workrers pull rules from disk
+- rule stored in cache
+- Rate limiter middlewar(RLM) loads rules from cache
+- rlm fetch the counter from redis
+- rlm decided
+
+**Rate limiter in a distributed environment**
+
+- Challenge
+  - Race condition
+    - Use lock but it will slow down the system
+    - Lua scrip and sorted sets data structure in redis
+  - Synchronization issue
+    - large system might needs more than one Rate limiter
+    - One possible solution is to use sticky sessions that allow a client to send traffic to the same rate limiter. 
+      - this is not scalable or flexible
+    - Or use centralized data store
+
+**Performance optimization**
+
+2 areas to improve
+- multi-data center setup is crucial for a rate limiter sicne latency is high for user far away from the data center
+- synchronize data with an eventual consistency model
+
+**Monitoring**
+
+- make sure algorithm and rules are effective
+
+### Step 4 - Wrap up
+
