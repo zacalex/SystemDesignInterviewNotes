@@ -575,3 +575,16 @@ Use header
 
 ### Step 4 - Wrap up
 
+## CHAPTER 5: DESIGN CONSISTENT HASHING
+
+- achieve horizontal scaling
+- important to distribute requests/data efficiently
+- Consistent hashing is a commonly used technique to achieve dthis goal
+
+<!-- TODO: finish ch5 -->
+
+## CHAPTER 6: DESIGN A KEY-VALUE STORE
+
+- A key-value store
+- a non-relational database
+- 
