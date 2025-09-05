@@ -67,7 +67,7 @@ typhoon or an earthquake, data is still preserved
 operation even if a database is offline as you can access data stored in another database
 server.
 
-# Operation
+#### Operation
 - If only one slave database is available and it goes offline, read operations will be directed
 to the master database temporarily
 
@@ -884,9 +884,9 @@ Different:
 - 500M DAU
 - 200M shops
 
-## Technical
+### Technical
 
-### Storage
+#### Storage
 - SQL vs NonSql vs in memory
   - Sql
     - ralation, bunnessis is already there
@@ -969,5 +969,126 @@ There are 2 paras
    1. ![Fig yelp](pic/Screenshot%202025-09-06%20at%204.24.59 AM.png)
    2. the more cache is closer to the front end, the better the performance, but the cost is higher
 
+## Design job schduler 
+
+### requirement 
+1. internal system
+2. mvp? 
+   1. scope
+3. type of job
+   1. 常驻
+   2. 临时
+   3. can be all type
+
+**functional**
+from user point of view
+- user submit task (short term scrip or long term task)
+- visulazation/monitor
+- advanced feature
+  - add future task
+  - DAG (job dependency, directed acyclie graph)
+
+**non functional**
+1. laytency 
+   1. submit takes less than 10s
+   2. dashboard  fresh per 60s
+2. scalablilty
+3. relaibility
+
+**job data model**
+1. repo (code/config/exec)
+2. metadata
+   1. id
+   2. owner id
+   3. binary path
+   4. in/output path
+   5. created time
+   6. status
+      1. ready -> waiting -> exec -> success
+                      |        |
+                      retry-- fail -> abort      
+   7. retry_count
+
+**Basic**
+![Fig job sch](pic/Screenshot%202025-09-06%20at%205.16.02 AM.png)
+
+**Improved**
+- add cache
+- add queue
+![Fig job sch](pic/Screenshot%202025-09-06%20at%205.17.58 AM.png)
+
+- dashboard qps
+  - 10k user * 100 job/user/day * 10 view = 100 qps
+  - Peak = 500 qps
+
+- submission qps 
+  - 10k user * 100 job/user/day = 10 qps
+
+**Deep dive for database**
+- single point faiure
+- double master for reliability
+
+No sql vs sql?
+- defer decision, not a blocker
+- data model -> foreign key
+- query pattern -> do you need union table
+- consistency, do I need strong consistency or just eventual consistency
+- 开闭原则
+  - 好的架构会增加未作出决策的数量
+
+**Deep dive for decoupule**
+
+- message queue 削峰填谷
+  - queue might crash
+  - no data in queue, can we use one data system
+  - message queue as data store
+    - kafeka data base
+  - data base as message queue
+    - higher accecptance
+    - google spanner
+- fire and forget
+  - not safe
+  - worker might be dead
+- informer - worker
+  - check the status of worker 
+  - manages the worker
+  - rpc
+- model
+  - pull
+  - push
+  - hybrid
+    - side kick to monitor the work and report the status to informer
+    - Add cost the worker
+      - might not have enough resource
+      - reduce the frequence or time
+- save resource
+  - on runtime
+    - move the vm to container
+      - container expose more stuff
+    - lightern the vm
+  - IO 密集
+  - machine 密集
+  - 混合部署
+    - both IO and machine 密集
+    - reallocate resource
+  - recycle resource
+    - worker might request more resource
+    - long term vs temp task
+    - cpu is 可压缩资源
+
+**more feature**
+
+- Cron service
+  - priority queue to manages the task
+  - timed task
+  - tasks have prioirty
+- DAG service
+  - manages the depencency
+  - might be able to move to informer
+    - might make informer too complicated
+    - if split, the system is more extendable
+
+
+![Fig job sch](pic/Screenshot%202025-09-06%20at%207.35.17 AM.png)
 
 
