@@ -850,4 +850,124 @@ Start -> ready -> process -> done
 - localization 
   - different data center
 
+## design yelp / point of interest
+
+Indexing or retrival problem
+- modeling
+
+Caching problem
+- for query
+
+Same:
+1. store a lot of data
+2. return the data quickly
+3. High concurrency
+4. low requirement for write data
+
+Different:
+- core for caching is hit & missing ratio
+
+### requirement
+**Functional**
+- search nearby location
+- watch view shop details
+- owner add/update/delete shop
+
+**non-functional**
+- low latency
+- freshness -daily/hourly
+- scalable
+- FT
+
+**assumption**
+- 1B Monthly AU
+- 500M DAU
+- 200M shops
+
+## Technical
+
+### Storage
+- SQL vs NonSql vs in memory
+  - Sql
+    - ralation, bunnessis is already there
+    - need to handle data sharding
+  - non sql
+    - data sharding is handled already
+    - cheap
+    - no business searching
+- whatever is in use
+
+**Data model**
+- id: int
+- owner id: int
+- location: double
+- address: string
+- city: string
+- state: string
+- contry: string
+- zip: long
+- description: string: 5kb
+- picture/video as url: string
+-> 10kb
+
+200M * 10kb = 2TB -> not worthy for in memory
+
+**Basic for everything**
+![Fig yelp](pic/Screenshot%202025-09-05%20at%2011.09.53 PM.png)
+
+**Calculation**
+- search
+  - 500M * 5/day = 2500M/100k sec = 25k QPS
+  - peak 100k QPS
+  - 20 shards
+  - auto scalaing 
+- Business owner 
+  - 200M * 1 upd - 10ate/month = 200M/(30*100k) = 70 qps
+  - no need to worries, can handle on single machine
+
+Conclusion: focus on search
+
+#### Deep dive on search**
+- master + slave
+- database sharding
+  - which id to shard
+  - some maintaince cost
+
+API:
+![Fig yelp](pic/Screenshot%202025-09-06%20at%204.05.52 AM.png)
+
+**solutions for sql**
+There are 2 paras
+1. write a query for the whole table 
+2. 联合索引？
+  - 最左匹配，无法优化
+3. geo hash
+   1. 2d to 1d -> 字母+数字
+   2. stored as data in data base
+4. quatar tree
+   1. stored as structure in RAM
+   2. how to fit into memory
+   3. tree structure store info on leaf
+   4. what to store
+      1. business id
+      2. lat/long
+      3. short desc
+      4. < 50 byte
+      5. (200M/100(per node)) * (100*50B) -> 10G
+      6. can be store in ram
+   5. hard to update the tree
+      1. what if the new node is on the boarder
+   6. relax the refresh rate
+      1. daily or hourly, not much cost increase
+   7. ![Fig yelp](pic/Screenshot%202025-09-06%20at%204.22.43 AM.png)
+      1. add seed for fault tolance, on serice crash, build the tree from seed
+   8. break down the quad tree from global to deployment (west/east/centra us). it's too much by city.
+      1. more cost
+      2. helps on FT
+      3. reduce the size of tree
+5. Improve the search with cache
+   1. ![Fig yelp](pic/Screenshot%202025-09-06%20at%204.24.59 AM.png)
+   2. the more cache is closer to the front end, the better the performance, but the cost is higher
+
+
 
