@@ -587,4 +587,267 @@ Use header
 
 - A key-value store
 - a non-relational database
-- 
+
+## CHAPTER 14: DESIGN YOUTUBE
+
+- The solution to this question can be applied to other interview questions like designing a video sharing platform such as Netflix and Hulu.
+- Total number of monthly active users: **2 billion**.
+- Number of videos watched per day: **5 billion**.
+- 73% of US adults use YouTube
+- 50 million creators on YouTube
+- YouTube’s Ad revenue was $15.1 billion for the full year 2019, up 36% from 2018
+- responsible for 37% of all mobile internet traffic.
+- available in 80 different languages.
+
+### Step 1 - Understand the problem and establish design scope
+
+Question:
+- What features are important?
+  - Ability to upload a video and watch a video
+- What clients do we need to support?
+  - Mobile apps, web browsers, and smart TV.
+- How many daily active users do we have?
+  - 5 million
+- What is the average daily time spent on the product?
+  - 30min
+- Do we need to support international users?
+  - Yes, a large percentage of users are international users.
+- What are the supported video resolutions?
+  - The system accepts most of the video resolutions and formats.
+- Is encryption required?
+  - Yes
+- Any file size requirement for videos?
+  - Our platform focuses on small and medium-sized videos. The maximum allowed video size is 1GB.
+- Can we leverage some of the existing cloud infrastructures provided by Amazon, Google, or Microsoft?
+  - That is a great question. Building everything from scratch is unrealistic for most companies, it is recommended to leverage some of the existing cloud services.
+
+**Focus**
+- Ability to upload videos fast
+- Smooth video streaming
+- Ability to change video quality
+- Low infrastructure cost
+- High availability, scalability, and reliability requirements
+- Clients supported: mobile apps, web browser, and smart TV
+
+**Back of the envelope estimation**
+
+- 5m DAU
+- 5 video per user per day
+- 10% user upload 1 video per day
+- avg video size is 300mb
+- daily storage needed: 5m * 10% * 300mb =10^5 * 1500mb = 150 * 10^6mb =150Tb
+- CDN cost
+  - amazon cdn in use cost $0.02/gb
+  - daily cost is 5m * 5 * 0.3 * 0.02 = $15 * 10^4  
+  
+### Step 2 - Propose high-level design and get buy-in
+
+![Fig basic components](pic/Screenshot%202025-08-27%20at%202.00.02 PM.png)
+
+- Client: pc, mobile, tv, vr
+- CDN: video stored in CDN
+- API servers: 
+  - recoomendation
+  - video upload
+  - meta data database
+  - cache
+  - signup
+  - Video uploading
+  - Video stream flow
+
+**Video uploading flow**
+
+![Fig 14-4](pic/Screenshot%202025-08-27%20at%202.10.40 PM.png)
+
+- user watch on devices
+- load balancer: distrubte requests
+- api servers: everything but video stream
+- metadata db: video metadata, shared and replicated for performance and high availablelity
+- metadata cache: for better performance
+- original storage: a blob (a binary large object) storage
+- transcodeding servers: video transcoding to format better for streams depends on bandwidth or cap
+- transcode storage: blob storage for transcoded video
+- CDN where the videos are cached
+- Completion queueu: store video transcoding completion events
+- Completino handler: list of workders that pull event data 
+
+**Flow a: upload the actual video**
+
+1. video upload to original
+2. transcoding server fetch the video from original storage and transcoding
+3. parallel steps
+   1. transcoded video send to transcoded storage, then distributed to CDN 
+   2. transcoding completion event queued in completion queue, then workers start to pull data from the queue. Completion handler update the meta data database and cache when video transcoding is complete
+4. API server inform the client the completion
+
+**Flow b: upload the metadata**
+
+The request contains video metadata,
+including 
+- file name
+- size,
+- format, 
+- etc. 
+
+API servers update the metadata cache and database.
+
+![Fig 14-6](pic/Screenshot%202025-08-27%20at%202.49.28 PM.png)
+
+**Video streaming flow**
+Streaming means your device continuously receives video streams from remote source videos.
+Popular streaming protocols are:
+- MPEG–DASH. MPEG stands for “Moving Picture Experts Group” and DASH stands for "Dynamic Adaptive Streaming over HTTP"
+- Apple HLS. HLS stands for “HTTP Live Streaming”
+- Microsoft Smooth Streaming.
+- Adobe HTTP Dynamic Streaming (HDS).
+
+### Step 3 - Design deep dive
+**video uploading flow**
+- Why Video transcoding
+  - raw video is big
+  - device support
+  - high-quality whiule smooth playback
+  - Adapt to network condition
+- Encoding formats, mosto of them contains 2 parts
+  - Container: a baskets tha contains video/audio and meta data.
+  - Codecs: compression and decompression algorithms like H.264, VP9d
+**video streaming flow**
+
+- Transcoding a video is computationally expensive and time-consuming
+- DAG: To support different video processing pipelines and maintain high parallelism
+![Fig 14-8](pic/Screenshot%202025-08-27%20at%203.04.19 PM.png)
+
+## design tiktok
+### requirement
+**Functional**
+- upload video
+- watch video
+
+**non-functional**
+- scalability
+- availablity
+- video latency
+- fault tolance
+
+**assumption**
+- 1B DAU
+- watch 100/day
+- upload 1/day
+- avg 1 min video -> 10MB
+- length of video 15s - 3min
+
+**Basic for everything**
+![Fig tiktok](pic/Screenshot%202025-09-05%20at%209.56.39 PM.png)
+
+**Scale for function**
+![Fig tiktok](pic/Screenshot%202025-09-05%20at%209.59.41 PM.png)
+
+**To scalale up**
+- more data partition
+- more functional partition
+- more copy
+
+**Add metaData for video**
+![Fig tiktok](pic/Screenshot%202025-09-05%20at%2010.02.53 PM.png)
+
+**Deep dive for metaData**
+- SQL vs NonSql
+  - Sql
+    - ralation, bunnessis is already there
+    - need to handle data sharding
+  - non sql
+    - data sharding is handled already
+    - cheap
+    - no business searching
+- whatever is in use
+
+**Deep dive for storage**
+- Blob vs FS
+  - FS
+    - Pro:
+      - hard to lost the files
+      - a lot of chunk for data
+      - clasic 3 numnber of replica
+    - Con:
+      - it's slow
+      - a lot of space
+  - Blob
+    - Pro:
+      - a lot of small files
+
+### Deep dive for upload
+
+- Simple solution
+  - Just upload as one file
+    - Pro: simple
+    - Con: 
+      - risk of upload 1 big file
+      - too late to detect the invalid video
+        - copy right
+      - expose the storage
+- Updated solution
+  - temp raw space
+![Fig tiktok](pic/Screenshot%202025-09-05%20at%2010.16.42 PM.png)
+
+1min -> 10Mb
+60s * 30 fps * (720 * 480 * 3 * 8 bytes ) = 1800 m/s
+
+**Upload video alg**
+- video compress
+  - split video to small chunk
+    - 10Mb to 10 * 1Mb
+    - syntax, split the video by moving bits
+  - in mobile env, the connection is not stable
+    - split vide to small chunk helps failure tolance
+    - paralle upload
+
+**video processing**
+- add a message queue to process the status of the upload
+
+![Fig tiktok](pic/Screenshot%202025-09-05%20at%2010.25.01 PM.png)
+
+- add a worker queue to process the message queue
+- Adjust the worker number depends on the api call
+
+![Fig tiktok](pic/Screenshot%202025-09-05%20at%2010.26.08 PM.png)
+
+**video encoding for woker**
+
+- encoding the video for different device
+  - the video get uploaded is different fromt the video get played 
+  - the video for play changes depends on
+    - quality of the connection
+    - power of the device
+
+![Fig tiktok](pic/Screenshot%202025-09-05%20at%2010.31.22 PM.png)
+
+**State machine**
+Start -> ready -> process -> done
+           |         |
+           - ---> retry
+### Deep dive for upload
+
+
+**Basic**
+1. view api query metadata
+2. view api query blob storage
+
+**Hotspot**
+- for popular video
+  - Add cdn
+    - ![Fig tiktok](pic/Screenshot%202025-09-05%20at%2010.37.38 PM.png)
+    - More cost
+  - Move popular video to CDN
+    - ![Fig tiktok](pic/Screenshot%202025-09-05%20at%2010.39.34 PM.png)
+    - more cost
+**Stream protocal**
+- apple's protocal
+- different device have different protocal
+
+**Show off**
+- Use machine learning to improve what video to view feed
+![Fig tiktok](pic/Screenshot%202025-09-05%20at%2010.42.17 PM.png)
+- localization 
+  - different data center
+
+
