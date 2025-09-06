@@ -1092,3 +1092,72 @@ No sql vs sql?
 ![Fig job sch](pic/Screenshot%202025-09-06%20at%207.35.17 AM.png)
 
 
+## desigh file system
+
+### requirements
+#### functional 
+- upload/download files
+- sync files across devices
+- handle conflicts
+#### non functional
+- low latency -> 20s
+- availibility >> consistency
+- reliablity
+- scalablilty
+  - large file
+
+### basic design
+![Fig file system](pic/Screenshot%202025-09-06%20at%207.43.21 AM.png)
+
+**metadata**
+- file id
+- owner id
+- media type
+- created timestamp
+- modified timestamp
+- permission
+- access url
+- status
+- version 
+**metadata storage**
+
+sql vs no sql
+
+- dau: 100M user -> dau 20%
+- QPS = 20M * 10 file/day * 200M request / 100k sec = 2k qps
+- peak qps: 10k
+- both sql and nosql can handle
+- no need for strong consistency, just eventual consistency, so use nosql
+
+### deep dive
+
+**reduce upload path**
+- split file to 1Mb
+  - chunk structure
+    - chunk_id
+    - file_id
+    - status
+    - url
+    - md5
+    - version
+    - create timestamp
+    - ...
+- compress the file
+  - txt can reduce a lot space
+  - not too much for audio and video
+- support paralla upload
+- pre-signature 
+  - verify the file
+  - upload the file from client to blob directly
+  - save the upload from file management tot blob storage
+- introduce alg to verify file consistency
+- don't trust the client info
+
+![Fig file system](pic/Screenshot%202025-09-06%20at%207.59.10 AM.png)
+
+**version**
+
+- append
+- update chunk
+
+
