@@ -1155,9 +1155,41 @@ sql vs no sql
 
 ![Fig file system](pic/Screenshot%202025-09-06%20at%207.59.10 AM.png)
 
-**version**
+**update**
+- fully sync vs delta sync
+  - as chunk is used, just use delta sync
+  - append
+  - update chunk  
+- delete
+  - mark file with new status delete but don't delete right away
+    - delete it later
+- Pull the version data then sync if delta
+  - pull is data consuming
+  - long pulling, more expensive
+  - web socket
+    - doesn't work for old browser
+- push model
+  - sse
+  - save time 
+  - use http
+  - adaptbility is even lower
 
-- append
-- update chunk
+**conflict**
+offline update
+- use chunk version
+- keep both 
+- first writer win
+  - use version number which is on top of timestamp
+- merge
+
+**revert**
+Add log sequcnec
+
+- full sync to avoid missing info
+- increase complexity
+- moneytization 
+
+![Fig file system](pic/Screenshot%202025-09-06%20at%2012.33.25 PM.png)
+
 
 
