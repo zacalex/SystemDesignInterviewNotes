@@ -1191,5 +1191,117 @@ Add log sequcnec
 
 ![Fig file system](pic/Screenshot%202025-09-06%20at%2012.33.25 PM.png)
 
+## ads event aggregator
+
+large number of event
+- 50M ad_id
+- 1B click event = 1B / 100k sec = 10k/sec
+- CTS  = # click / impression 
+- 1:100
+- 100B impression = 1M qps
+###  requirement
+
+**functional**
+- aggregate metrics of given ad_id in last k minus
+- top k ad_id in last m min
+- filitering 
+- 2yr history data
+
+**non functional**
+- scalalbilty 
+- hight thouguput
+- high qps
+- data correctness
+- FT
+- latency < 15s
+
+### basic
+
+#### event structure
+
+- ad_id
+- timestamp
+- event_type = {click, imp, ...}
+- ip
+- user_id
+- country
+- ...
+
+10B <...< 100B
+request = 0.1k
+
+0.1kB * 100ksec = 1M qps
+peak 3M qps
+
+storage = 100B * o.1kb * 100k sec = 10 Tb
+1M = 300Tb
+
+### structure
+
+![Fig ads event aggregate](pic/Screenshot%202025-09-06%20at%201.43.45 PM.png)
+
+**Storage**
+1. RDB -> non, too much data
+2. noSql
+   1. cassandra? 
+   2. 3M/15K qps/sec = 200node
+   3. hotspot
+3. in memory kv store (redis)
+   1. 100k-200k/sec = 15-30 node
+   2. ram
+      1. might lost, so need storage
+4. message queue
+   1. more latency
+   2. buffer
+   3. kaffka
+   4. hotspot
+
+**real time processing**
+- batch processing
+  - map reduce
+- mini batch
+  - sprak streaming
+- streaming
+  - flint
+    - snapshot
+  - high cost
+  - low latency
+  - input might be faster than processing 
+- add checkpoint for ft
+  - add resource
+  - 50k event/sec, 3M/50k = 60 mode
+- aggregate window by min
+  - flash interval -> 10s to compete with 15s latency
+
+#### data storage
+
+**aggregated data**
+- structure
+  - ad_events
+    - id
+    - aggregated_minitus
+    - click count
+    - dim_key
+    - meta_data
+    - size -> 50k
+  - 50M * 2 yr * 365 * 24 * 60 * 50k = 3TB
+**How to read**
+- OLAP
+  - cold/hot
+  - 120G for 1yr, save on ram or ssd or cache
+  - prebuilt
+    - by ad_id
+    - by geo loc
+- correctness
+  - reconcile
+
+![Fig file system](pic/Screenshot%202025-09-06%20at%203.05.00 PM.png)
+  - kappa ??
+
+Checing on through put & latency
+
+
+## design chat app
+
 
 
