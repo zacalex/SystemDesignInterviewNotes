@@ -585,6 +585,115 @@ Checing on through put & latency
 
 
 ## design chat app
+- client + server side message deliver
+
+### requirement
+
+#### functional
+- 1v1 message 
+  - support offine message
+  - online delivery
+- goup chat ( < 200)
+- present status
+
+#### non functional
+- scalableilty 
+  - 1B
+- low latency < 500ms
+- high consistence
+  - order
+- FT$$
+
+### basic
+
+![Fig chat app](pic/Screenshot%202025-09-08%20at%206.40.39 PM.png)
+
+
+## design chatGPT
+
+### requirements
+- throughtput
+- latency
+
+### basic
+![Fig gpt](pic/Screenshot%202025-09-21%20at%204.14.33 PM.png)
+
+- an inference service is the core component responsible for running a trained machine learning model to generate predictions or responses. It's where the "thinking" happens
+- KV cache
+
+#### work flow
+1. input promote
+1. tokenization 
+1. embedding
+1. transformer x N
+   1. feed forward
+   2. multi-head attentation
+      1. self attentation
+         1. QKV: query, key, value
+         2. token by token
+         3. auto regression
+         4. Q * K * V calculaton -> new token
+         5. https://medium.com/@joaolages/kv-caching-explained-276520203249
+2. sampling
+3. detokenization
+4. output
+
+### Calculation
+Hardware A100 80GB ram
+
+**llama2 - 7Billion**
+- (4096 dim, 32 layer, 4096 context)
+- model weight = 7B * 2 bytes = 14GB size
+- kv cache / token = 2 * layer * dim * 2 bytes = 2 * 32 * 4096 * 2 = 512 kb/token
+- total kv cache = 512 * 4098 = 2 GB
+(- 80 - 14) / 2 = 33 sessoin
+
+
+**llama3 8B**
+- (32, 4096, 32 head 8 kv, 4096)
+- model = 16GB
+- kv cache - 128 kb/token
+- total = 1gb
+- 64 session
+
+**For bigger model**
+
+
+
+
+### deep dive
+#### batching
+   1. native batching
+   2. continuous baching
+      1. chunked prefill
+   3. PD disagg
+1. prefill: write cache
+   1. time to first token
+2. decode: read cache, append new
+
+![Fig gpt](pic/Screenshot%202025-09-21%20at%204.54.10 PM.png)
+- decouple prefill and decode node
+
+3. reduce kv Cache
+   1. quqatization
+      1. FP16-FP8
+   2. paged attentation
+   3. prefix sharding
+   4. compression
+4. networking
+   1. IB
+   2. ROCEv2
+5. streaming pipeline
+  
+#### parallelism
+1. tensor parall
+2. expert parall
+   1. hot expert
+3. context parall
+4. pipleline parall
+   1. for training
+
+
 
 
 

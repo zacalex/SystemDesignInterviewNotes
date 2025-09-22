@@ -716,4 +716,3 @@ Popular streaming protocols are:
 - Transcoding a video is computationally expensive and time-consuming
 - DAG: To support different video processing pipelines and maintain high parallelism
 ![Fig 14-8](pic/Screenshot%202025-08-27%20at%203.04.19 PM.png)
-
